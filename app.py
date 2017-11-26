@@ -2,11 +2,19 @@ import os
 import sys
 import json
 from datetime import datetime
-
+from pymessenger import Bot
 import requests
 from flask import Flask, request
+from fbmq import Page
+from utils import wit_response,get_news_elements
+from weatherApi import data_output,data_organizer,data_fetch,url_builder
 
 app = Flask(__name__)
+
+
+PAGE_ACCESS_TOKEN = "EAAbv9xxXgOMBALwqGvHhrqEzdQ5bHZCBs7XUtGjyQS2pZBt4Hmiqom0tuJ6YUNNwaox7BId32OicYFzJX10B0qZCQFXlj9u0M1msZAZBdtLhTMha4oaDZB1xTdJlKwIwjBzz3IrSdFqsSAYnXFy9rRluHrLHh4Y93WwHOBiR3UX4VQeGgvZCO2p"
+bot = Bot(PAGE_ACCESS_TOKEN)
+page = Page(PAGE_ACCESS_TOKEN)
 
 
 @app.route('/', methods=['GET'])
@@ -14,81 +22,120 @@ def verify():
     # when the endpoint is registered as a webhook, it must echo back
     # the 'hub.challenge' value it receives in the query arguments
     if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.challenge"):
-        if not request.args.get("hub.verify_token") == os.environ["VERIFY_TOKEN"]:
+        if not request.args.get("hub.verify_token") == "hello":
             return "Verification token mismatch", 403
         return request.args["hub.challenge"], 200
 
-    return "Hello world", 200
+    return "Hello world!!!--PyMessenger", 200
 
 
 @app.route('/', methods=['POST'])
 def webhook():
+		
+		page.handle_webhook(request.get_data(as_text=True) or 'UTF-8')
+		#print(request.get_json())
+		
+		
+		data = request.get_json()
+		log(data)
+		print(data)
+		
+		if data['object'] == 'page':
+			for entry in data['entry']:
+				for messaging_event in entry['messaging']:
 
-    # endpoint for processing incoming messaging events
+					# IDs
+					sender_id = messaging_event['sender']['id']
+					recipient_id = messaging_event['recipient']['id']
 
-    data = request.get_json()
-    log(data)  # you may not want to log every incoming message in production, but it's good for testing
+					if messaging_event.get('message'):
+						# Extracting text message
+						if 'text' in messaging_event['message']:
+							messaging_text = messaging_event['message']['text']
+						else:
+							messaging_text = 'no text'
+						
+						'''
+						entity, value = wit_response(messaging_text)
+						response = ''
+						if entity=='newstype':
+							response = "Ok I will send you {} news".format(str(value))
+						if entity == None:
+						 	response = "Welcome Sir, How I can help you ?"
+						'''
 
-    if data["object"] == "page":
+						categories,value = wit_response(messaging_text)
+						elements = get_news_elements(categories)
+						#weatherElements = {'temp':None,'humidity':None}
+						
+							
 
-        for entry in data["entry"]:
-            for messaging_event in entry["messaging"]:
+						response=''
+						# if value != None:
+						if (categories['newstype']!= None and categories['location']==None):
+							response = "Ok I will send you {} news".format(str(value))
+							bot.send_text_message(sender_id,response)
+							bot.send_generic_message(sender_id, elements)
 
-                if messaging_event.get("message"):  # someone sent us a message
+						elif (categories['newstype']!= None and categories['location']!=None):
+							response = "Ok I will send you {} news".format(str(value))
+							bot.send_text_message(sender_id,response)
+							bot.send_generic_message(sender_id, elements)
+						
+						elif(categories['weatherinfo']!=None and categories['location']==None):
+							response="Current Temperature " + str(weatherElements['temp'])
+							bot.send_text_message(sender_id,response)
+						
+						elif(categories['weatherinfo']!=None and categories['location']!=None):
+							print(value[:-2])
+							weatherElements = data_organizer(data_fetch(url_builder(value)))
+							lenWeatherElements  = len(weatherElements.keys())
+							if(weatherElements!=None and lenWeatherElements!=0):
+								response= (categories['location']+"'s Temperature is: " +
+										   str(weatherElements['temp']) +"\n"+"Humidity is: "+ 
+										   str(weatherElements['humidity'])+"\nWind Speed is: "+
+										   str(weatherElements['wind'])+"\nPressure: "+
+										   str(weatherElements['pressure'])+"\nSunrise at: "+
+										   str(weatherElements['sunrise'])+"\nSunset at: "+
+										   str(weatherElements['sunset'])
 
-                    sender_id = messaging_event["sender"]["id"]        # the facebook ID of the person sending you the message
-                    recipient_id = messaging_event["recipient"]["id"]  # the recipient's ID, which should be your page's facebook ID
-                    message_text = messaging_event["message"]["text"]  # the message's text
+								)
 
-                    send_message(sender_id, "roger that!")
+								bot.send_text_message(sender_id,response)
+							else:
+								response="Please Enter A City Name"
+								bot.send_text_message(sender_id,response)
+							
+						
+						else:
+							response = "Welcome Sir, How I can help you ?"
+							bot.send_text_message(sender_id,response)
+						
+						
+						# # Echo
+						# response = None
+						# entity, value = wit_response(messaging_text)
+						# if entity=='newstype':
+						# 	response = "Ok I will send you {} news".format(str(value))
+						# elif entity == "location":
+						# 	response = "Ok, I will send you top headlines from {0}".format(str(value))
+						# if entity == None:
+						# 	response = "Welcome Sir, How I can help you ?"
+						# url = "https://www.youtube.com/watch?v=ru_jQk086sE"	
+						#bot.send_text_message(sender_id, response)
+						#bot.send_video_url(sender_id,url)
+						#bot.send_image(sender_id,'C:\\Users\Akash\Downloads\ACI-Logo.png')
+		
+		
+		return "ok", 200
+		
 
-                if messaging_event.get("delivery"):  # delivery confirmation
-                    pass
+    
 
-                if messaging_event.get("optin"):  # optin confirmation
-                    pass
-
-                if messaging_event.get("postback"):  # user clicked/tapped "postback" button in earlier message
-                    pass
-
-    return "ok", 200
-
-
-def send_message(recipient_id, message_text):
-
-    log("sending message to {recipient}: {text}".format(recipient=recipient_id, text=message_text))
-
-    params = {
-        "access_token": os.environ["PAGE_ACCESS_TOKEN"]
-    }
-    headers = {
-        "Content-Type": "application/json"
-    }
-    data = json.dumps({
-        "recipient": {
-            "id": recipient_id
-        },
-        "message": {
-            "text": message_text
-        }
-    })
-    r = requests.post("https://graph.facebook.com/v2.6/me/messages", params=params, headers=headers, data=data)
-    if r.status_code != 200:
-        log(r.status_code)
-        log(r.text)
-
-
-def log(msg, *args, **kwargs):  # simple wrapper for logging to stdout on heroku
-    try:
-        if type(msg) is dict:
-            msg = json.dumps(msg)
-        else:
-            msg = unicode(msg).format(*args, **kwargs)
-        print u"{}: {}".format(datetime.now(), msg)
-    except UnicodeEncodeError:
-        pass  # squash logging errors in case of non-ascii text
-    sys.stdout.flush()
+def log(message):
+	print(message)
+	sys.stdout.flush()
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,port=81)
