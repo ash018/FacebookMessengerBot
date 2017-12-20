@@ -12,7 +12,7 @@ from weatherApi import data_output,data_organizer,data_fetch,url_builder
 app = Flask(__name__)
 
 
-PAGE_ACCESS_TOKEN = "EAAbv9xxXgOMBALwqGvHhrqEzdQ5bHZCBs7XUtGjyQS2pZBt4Hmiqom0tuJ6YUNNwaox7BId32OicYFzJX10B0qZCQFXlj9u0M1msZAZBdtLhTMha4oaDZB1xTdJlKwIwjBzz3IrSdFqsSAYnXFy9rRluHrLHh4Y93WwHOBiR3UX4VQeGgvZCO2p"
+PAGE_ACCESS_TOKEN = "EAAbv9xxXgOMBAO7E1ViMxKXQULbofIvX7WyfZA26ZC9jitnS6w3PzDsGAkh4sn4f4C84tEhvr54rJFM4mA5lfE0hLxuWXXtdcM8QjhU6cxL75oH1PJWyEAIrfZAPMoxcFPXBZCIsIPZAom1oKLv79w3oNZCM7Uo1jruudndd7UiRKZCZAkBI3EKB"
 bot = Bot(PAGE_ACCESS_TOKEN)
 page = Page(PAGE_ACCESS_TOKEN)
 
@@ -33,11 +33,9 @@ def verify():
 def webhook():
 		
 		page.handle_webhook(request.get_data(as_text=True) or 'UTF-8')
-		#print(request.get_json())
-		
-		
+		print(request.get_json())
 		data = request.get_json()
-		log(data)
+		#log(data)
 		print(data)
 		
 		if data['object'] == 'page':
@@ -88,23 +86,23 @@ def webhook():
 						
 						elif(categories['weatherinfo']!=None and categories['location']!=None):
 							print(value[:-2])
-							weatherElements = data_organizer(data_fetch(url_builder(value)))
+							print(categories['location'])
+							weatherElements = data_organizer(data_fetch(url_builder(str(categories['location']))))
+							print(weatherElements)
 							lenWeatherElements  = len(weatherElements.keys())
-							if(weatherElements!=None and lenWeatherElements!=0):
-								response= (categories['location']+"'s Temperature is: " +
-										   str(weatherElements['temp']) +"\n"+"Humidity is: "+ 
-										   str(weatherElements['humidity'])+"\nWind Speed is: "+
-										   str(weatherElements['wind'])+"\nPressure: "+
+							#if(weatherElements!=None and lenWeatherElements!=0):
+							response= (categories['location']+"'s Temperature is: " +str(weatherElements['temp']) +"\n"+"Humidity is: "+  str(weatherElements['humidity'])+"\nWind Speed is: "+ str(weatherElements['wind'])
+												+"\nPressure: "+
 										   str(weatherElements['pressure'])+"\nSunrise at: "+
 										   str(weatherElements['sunrise'])+"\nSunset at: "+
 										   str(weatherElements['sunset'])
 
 								)
 
-								bot.send_text_message(sender_id,response)
-							else:
-								response="Please Enter A City Name"
-								bot.send_text_message(sender_id,response)
+							bot.send_text_message(sender_id,response)
+							#else:
+								#response="Please Enter A City Name"
+								#bot.send_text_message(sender_id,response)
 							
 						
 						else:
