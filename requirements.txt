@@ -52,7 +52,7 @@ facepy==1.0.9
 fastcache==1.0.2
 fbmq==2.4.1
 Flask==0.12
-Flask-Cors==3.0.2
+Flask-Cors==3.0.9
 future==0.16.0
 gevent==1.2.1
 gnewsclient==1.0.2
