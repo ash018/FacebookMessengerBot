@@ -39,7 +39,7 @@ dask==0.15.4
 datashape==0.5.4
 decorator==4.0.11
 dill==0.2.5
-Django==1.8.18
+Django==2.2.24
 django-admin-bootstrapped==2.5.7
 django-mssql==1.8
 django-pyodbc==1.1.1
